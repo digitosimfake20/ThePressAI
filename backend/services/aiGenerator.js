@@ -2,7 +2,7 @@ import OpenAI from "openai";
 
 export async function generateResponse(query, newsData) {
   const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY || "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"
+    apiKey: process.env.OPENAI_API_KEY
   });
 
   try {
