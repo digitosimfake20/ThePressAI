@@ -1,25 +1,41 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import LandingPage from "./components/LandingPage";
+import ChatPage from "./components/ChatPage";
+import "./app.css";
 
-function App() {
+export default function App() {
+  const [stage, setStage] = useState("landing"); // 'landing' | 'chat'
+  const [initialPrompt, setInitialPrompt] = useState("");
+
+  const goToChat = (prompt) => {
+    setInitialPrompt(prompt || "");
+    setStage("chat");
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="app-root">
+      <AnimatePresence mode="wait">
+        {stage === "landing" ? (
+          <motion.div
+            key="landing"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <LandingPage onEnter={goToChat} />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="chat"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+          >
+            <ChatPage initialPrompt={initialPrompt} onBack={() => setStage("landing")} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
-
-export default App;
