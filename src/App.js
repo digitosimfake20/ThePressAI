@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import LandingPage from "./components/LandingPage";
 import ChatPage from "./components/ChatPage";
-import "./app.css";
+import "./App.css";
 
 export default function App() {
   const [stage, setStage] = useState("landing"); // 'landing' | 'chat'
