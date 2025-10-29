@@ -16,11 +16,11 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "concurrently \"react-scripts start\" \"cd backend && node server.js\"",
+    "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "dev": "concurrently \"npm start\" \"cd backend && npm run dev\""
+    "dev": "concurrently \"react-scripts start\" \"cd backend && node server.js\""
   },
   "eslintConfig": {
     "extends": [
