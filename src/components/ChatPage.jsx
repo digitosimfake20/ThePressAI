@@ -61,7 +61,7 @@ export default function ChatPage({ initialPrompt = "", onBack }) {
     console.log("Sending query to backend:", text);
 
     try {
-      const response = await fetch("http://localhost:5000/api/check", {
+      const response = await fetch("/api/check", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
