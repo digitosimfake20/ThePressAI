@@ -442,11 +442,18 @@ export async function handler(event, context) {
       };
     }
 
-    // Scrape news from multiple sources
-    const newsData = await scrapeNews(query);
+    // Set a timeout for the entire operation (25 seconds to stay under Netlify's 30s limit)
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Function timeout')), 25000);
+    });
 
-    // Generate AI response
-    const aiResponse = await generateResponse(query, newsData);
+    // Scrape news from multiple sources with timeout
+    const scrapePromise = scrapeNews(query);
+    const newsData = await Promise.race([scrapePromise, timeoutPromise]);
+
+    // Generate AI response with timeout
+    const aiPromise = generateResponse(query, newsData);
+    const aiResponse = await Promise.race([aiPromise, timeoutPromise]);
 
     // Format the final response
     const formatted = formatResponse(aiResponse, newsData);
@@ -458,6 +465,19 @@ export async function handler(event, context) {
     };
   } catch (error) {
     console.error('Error in Netlify function:', error);
+
+    // Handle timeout specifically
+    if (error.message === 'Function timeout') {
+      return {
+        statusCode: 408,
+        headers,
+        body: JSON.stringify({
+          error: 'Request timeout',
+          message: 'The request took too long to process. Please try again.'
+        }),
+      };
+    }
+
     return {
       statusCode: 500,
       headers,
