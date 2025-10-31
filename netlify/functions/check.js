@@ -2,14 +2,106 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 import OpenAI from "openai";
 
-// Function to detect if query is Vietnamese
+// Function to detect if query is Vietnamese (prioritizes diacritics over keywords)
 function isVietnameseQuery(query) {
-  // Vietnamese characters and common Vietnamese words
+  // Vietnamese characters (diacritics are a strong signal)
   const vietnamesePattern = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ]/;
-  const vietnameseWords = ['việt nam', 'hà nội', 'sài gòn', 'đà nẵng', 'cần thơ', 'việt', 'nam', 'tphcm', 'bình dương', 'đồng nai', 'nghệ an', 'hải phòng'];
+
+  // If contains Vietnamese diacritics, it's Vietnamese
+  if (vietnamesePattern.test(query)) {
+    return true;
+  }
+
+  // Only use multi-word Vietnamese phrases to avoid false positives
+  const vietnamesePhrases = [
+    'việt nam', 'hà nội', 'sài gòn', 'đà nẵng', 'cần thơ', 'tphcm', 
+    'bình dương', 'đồng nai', 'nghệ an', 'hải phòng', 'tp hồ chí minh'
+  ];
 
   const lowerQuery = query.toLowerCase();
-  return vietnamesePattern.test(query) || vietnameseWords.some(word => lowerQuery.includes(word));
+  return vietnamesePhrases.some(phrase => lowerQuery.includes(phrase));
+}
+
+// Function to extract key search terms from long queries
+function extractKeyTerms(query) {
+  // Remove common question words and filler words
+  const fillerWords = [
+    'is', 'it', 'true', 'that', 'the', 'a', 'an', 'can', 'you', 'check', 'verify', 'có', 'phải', 'không', 'là', 'được', 'thật', 'sự', 'thế', 'nào', 'như', 'về'
+  ];
+
+  // Split into words and filter out short/filler words
+  const words = query.toLowerCase().split(/\s+/)
+    .filter(word => word.length > 2 && !fillerWords.includes(word));
+
+  // If query is very long (>10 words), take first 5-7 most important words
+  if (words.length > 10) {
+    return words.slice(0, 7).join(' ');
+  }
+
+  // Otherwise use the whole query
+  return query;
+}
+
+// Detect language more accurately (handles both accented and unaccented Vietnamese)
+function detectLanguage(query) {
+  const lowerQuery = query.toLowerCase();
+
+  // Count Vietnamese characters (with diacritics)
+  const vietnameseChars = (query.match(/[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ]/g) || []).length;
+  const totalChars = query.replace(/\s/g, '').length;
+
+  // If more than 15% Vietnamese characters with diacritics, it's definitely Vietnamese
+  if (totalChars > 0 && (vietnameseChars / totalChars) > 0.15) {
+    return 'vi';
+  }
+
+  // Vietnamese-specific keywords and phrases
+  const vietnameseKeywords = [
+    // With accents - place names and institutions
+    'việt nam', 'hà nội', 'sài gòn', 'đà nẵng', 'tphcm', 'chính phủ', 'quốc hội', 'thủ tướng',
+    'tp hồ chí minh', 'thành phố', 'cần thơ', 'bình dương', 'đồng nai',
+    // Without accents - place names and institutions  
+    'viet nam', 'ha noi', 'sai gon', 'da nang', 'chinh phu', 'quoc hoi', 'thu tuong',
+    'tp ho chi minh', 'thanh pho', 'can tho', 'binh duong', 'dong nai',
+    // Common Vietnamese question phrases (unaccented)
+    'co phai', 'co that', 'co dung', 'co nen', 'khong phai', 'bao nhieu', 'the nao',
+    'tai sao', 'khi nao', 'o dau', 'ra sao', 'nhu the nao', 'la gi',
+    // Common Vietnamese words/phrases unlikely in English
+    'toi co', 'ban co', 'chung ta', 'chung toi', 'mua nha', 'ban nha',
+    'thoi tiet', 'hom nay', 'ngay mai', 'tuan nay', 'thang nay', 'nam nay',
+    'nen khong', 'phai khong', 'duoc khong', 'co khong',
+    'ban nghi', 'toi nghi', 'hay nhat', 'tot nhat', 'xau nhat'
+  ];
+
+  // Check for Vietnamese-specific keywords
+  if (vietnameseKeywords.some(word => lowerQuery.includes(word))) {
+    return 'vi';
+  }
+
+  // Check for common Vietnamese question patterns (unaccented)
+  const vietnamesePatterns = [
+    /\bco\s+phai\b/,           // có phải
+    /\bkhong\s+phai\b/,        // không phải  
+    /\bla\s+gi\b/,             // là gì
+    /\bnhu\s+the\s+nao\b/,     // như thế nào
+    /\bco\s+that\b/,           // có thật
+    /\bco\s+dung\b/,           // có đúng
+    /\btai\s+sao\b/,           // tại sao
+    /\bkhi\s+nao\b/,           // khi nào
+    /\bo\s+dau\b/              // ở đâu
+  ];
+
+  if (vietnamesePatterns.some(pattern => pattern.test(lowerQuery))) {
+    return 'vi';
+  }
+
+  // Fallback: use original isVietnameseQuery for additional checks
+  if (isVietnameseQuery(query)) {
+    return 'vi';
+  }
+
+  // Otherwise, default to English
+  return 'en';
 }
 
 const userAgents = [
@@ -29,11 +121,16 @@ function randomUserAgent() {
 async function scrapeNews(query) {
   const isVietnamese = isVietnameseQuery(query);
 
+  // Extract key terms for better search results
+  const searchTerms = extractKeyTerms(query);
+  console.log(`Original query: "${query}"`);
+  console.log(`Search terms: "${searchTerms}"`);
+
   // Prioritize Vietnamese sources for Vietnamese queries, international for others
   const vietnameseSources = [
     {
       name: "VnExpress",
-      url: `https://timkiem.vnexpress.net/?q=${encodeURIComponent(query)}`,
+      url: `https://timkiem.vnexpress.net/?q=${encodeURIComponent(searchTerms)}`,
       selectors: [".title-news a", ".item-news a[href*='/']", "h3.title-news a"],
       baseUrl: "https://vnexpress.net",
       urlProcessor: (href) => {
@@ -44,7 +141,7 @@ async function scrapeNews(query) {
     },
     {
       name: "Tuoi Tre",
-      url: `https://tuoitre.vn/tim-kiem.htm?keywords=${encodeURIComponent(query)}`,
+      url: `https://tuoitre.vn/tim-kiem.htm?keywords=${encodeURIComponent(searchTerms)}`,
       selectors: [".news-item a[href*='.htm']", "h3 a[href*='.htm']", ".title a[href*='.htm']"],
       baseUrl: "https://tuoitre.vn",
       urlProcessor: (href) => {
@@ -55,7 +152,7 @@ async function scrapeNews(query) {
     },
     {
       name: "Thanh Nien",
-      url: `https://thanhnien.vn/tim-kiem.html?q=${encodeURIComponent(query)}`,
+      url: `https://thanhnien.vn/tim-kiem.html?q=${encodeURIComponent(searchTerms)}`,
       selectors: [".story__title a", ".box-title a[href*='.html']", "h2 a[href*='.html']"],
       baseUrl: "https://thanhnien.vn",
       urlProcessor: (href) => {
@@ -227,78 +324,71 @@ async function scrapeNews(query) {
     },
   ];
 
-  // Choose sources based on query language
+  // Choose sources based on query language - REDUCED for faster response
   const sources = isVietnamese ?
-    [...vietnameseSources, ...internationalSources.slice(0, 2)] : // Vietnamese + 2 international
-    [...internationalSources.slice(0, 5), ...vietnameseSources.slice(0, 1)];   // 5 international + 1 Vietnamese
+    [...vietnameseSources.slice(0, 2), ...internationalSources.slice(0, 1)] : // 2 Vietnamese + 1 international = 3 sources
+    [...internationalSources.slice(0, 2), ...vietnameseSources.slice(0, 1)];   // 2 international + 1 Vietnamese = 3 sources
 
-  const results = [];
+  // Scrape sources in PARALLEL with timeout protection
+  const scrapePromises = sources.map(async (source) => {
+    try {
+      const response = await axios.get(source.url, {
+        headers: {
+          "User-Agent": randomUserAgent(),
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+          "Accept-Encoding": "gzip, deflate, br",
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache",
+          "Upgrade-Insecure-Requests": "1",
+          "Sec-Fetch-Dest": "document",
+          "Sec-Fetch-Mode": "navigate",
+          "Sec-Fetch-Site": "none",
+          "Sec-Fetch-User": "?1",
+          "Referer": "https://www.google.com/",
+        },
+        timeout: 5000, // Reduced to 5 seconds
+        maxRedirects: 3,
+      });
 
-  for (const source of sources) {
-    let retries = 3;
-    let success = false;
-    while (retries > 0 && !success) {
-      try {
-        // Add random delay to avoid rate limiting (1-3 seconds)
-        const delay = Math.floor(Math.random() * 2000) + 1000;
-        await new Promise(resolve => setTimeout(resolve, delay));
+      const $ = cheerio.load(response.data);
+      const articles = [];
 
-        const response = await axios.get(source.url, {
-          headers: {
-            "User-Agent": randomUserAgent(),
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Cache-Control": "no-cache",
-            "Pragma": "no-cache",
-            "Upgrade-Insecure-Requests": "1",
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "none",
-            "Sec-Fetch-User": "?1",
-            "Referer": "https://www.google.com/",
-          },
-          timeout: 15000,
-          maxRedirects: 5,
+      for (const sel of source.selectors) {
+        $(sel).each((i, el) => {
+          if (articles.length >= 3) return false;
+          const link = $(el).closest("a").attr("href") || $(el).attr("href");
+          const title = $(el).text().trim();
+          if (title && link) {
+            let fullUrl = link.startsWith("http")
+              ? link
+              : `${source.baseUrl}${link}`;
+            articles.push({ title, url: fullUrl });
+          }
         });
-
-        const $ = cheerio.load(response.data);
-        const articles = [];
-
-        for (const sel of source.selectors) {
-          $(sel).each((i, el) => {
-            if (articles.length >= 3) return false;
-            const link = $(el).closest("a").attr("href") || $(el).attr("href");
-            const title = $(el).text().trim();
-            if (title && link) {
-              let fullUrl = link.startsWith("http")
-                ? link
-                : `${source.baseUrl}${link}`;
-              articles.push({ title, url: fullUrl });
-            }
-          });
-          if (articles.length > 0) break; // nếu tìm thấy bài thì dừng selector tiếp theo
-        }
-
-        console.log(`Successfully scraped ${source.name}: ${articles.length} articles`);
-        results.push({ source: source.name, articles });
-        success = true;
-      } catch (error) {
-        retries--;
-        if (retries === 0) {
-          console.error(`${source.name} failed after 3 attempts: ${error.message}`);
-          results.push({ source: source.name, articles: [] });
-        } else {
-          console.warn(`Retry ${source.name}, attempts left: ${retries}`);
-          // Exponential backoff: 1s, 2s, 4s
-          const backoffDelay = Math.pow(2, 3 - retries) * 1000;
-          await new Promise((r) => setTimeout(r, backoffDelay));
-        }
+        if (articles.length > 0) break;
       }
-    }
-  }
 
-  return results.filter((r) => r.articles.length > 0);
+      console.log(`Successfully scraped ${source.name}: ${articles.length} articles`);
+      return { source: source.name, articles };
+    } catch (error) {
+      console.error(`${source.name} failed: ${error.message}`);
+      return { source: source.name, articles: [] };
+    }
+  });
+
+  // Wait for all scraping with a 15-second overall timeout
+  const results = await Promise.race([
+    Promise.all(scrapePromises),
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Scraping timeout')), 15000)
+    )
+  ]).catch(error => {
+    console.error('Scraping error:', error.message);
+    return [];
+  });
+
+  return Array.isArray(results) ? results.filter((r) => r.articles.length > 0) : [];
 }
 
 async function generateResponse(query, newsData) {
@@ -307,79 +397,149 @@ async function generateResponse(query, newsData) {
   });
 
   try {
+    // Detect query language accurately
+    const queryLanguage = detectLanguage(query);
+    const languageInstruction = queryLanguage === 'vi' 
+      ? 'Vietnamese (Tiếng Việt)' 
+      : 'English';
+
+    console.log(`Detected language: ${languageInstruction} for query: "${query}"`);
+
     // Limit to 3-5 articles total for faster processing
     const limitedNewsData = newsData.flatMap(source => source.articles).slice(0, 5);
 
     const sourcesText = newsData.map(source =>
-      `${source.source}:\n${source.articles.slice(0, 1).map(a => `- ${a.title}\n  URL: ${a.url}`).join('\n')}`
+      `${source.source}:\n${source.articles.slice(0, 2).map(a => `- ${a.title}\n  URL: ${a.url}`).join('\n')}`
     ).join('\n\n');
 
     const prompt = `
-You are PressAI, a news verification assistant. Analyze the following news query and provide a detailed fact-check response.
+You are PressAI, a professional news verification assistant. Analyze the query and provide a comprehensive, detailed fact-check response.
 
-CRITICAL LANGUAGE INSTRUCTION: First, detect the language of the user's query ("${query}"). Then, provide the ENTIRE response (truth_percentage, verdict, summary, highlights, sources) in that EXACT SAME LANGUAGE. Do not use English if the query is in Vietnamese. Do not use Vietnamese if the query is in English. Respond in the detected language for all text fields.
+🔴 CRITICAL LANGUAGE REQUIREMENT:
+The user's query is in ${languageInstruction}.
+YOU MUST respond in ${languageInstruction} ONLY for ALL fields (truth_percentage, verdict, summary, highlights).
+- If language is Vietnamese → ALL text must be in Vietnamese (Tiếng Việt)
+- If language is English → ALL text must be in English
+DO NOT MIX LANGUAGES. Match the query language exactly.
 
-Query: "${query}"
+User Query: "${query}"
 
-Available news sources:
+Available News Sources:
 ${sourcesText}
 
-Please provide a comprehensive JSON response with these exact keys: truth_percentage, verdict, summary, highlights (array), sources (array of objects with title and url)
+${newsData.length === 0 ? 'NOTE: No news sources found. Explain that verification is limited without current sources.' : ''}
 
-Requirements:
-- truth_percentage: Assessment as percentages (e.g., "85% true, 15% false" or "85% đúng, 15% sai" depending on language)
-- verdict: One of "Likely True", "False", "Unverified", "Partially True" (translate to detected language)
-- summary: Detailed 2-3 sentence explanation of findings with specific facts (in detected language)
-- highlights: Array of 3-5 key points from the analysis (in detected language)
-- sources: Array of objects with title and url - ONLY include sources that directly support the verdict (empty array if no supporting sources)
+Task: Provide a comprehensive JSON response with these exact keys:
 
-IMPORTANT: Only include URLs that are valid, working, and directly related to the query. Do not fabricate, modify, or use placeholder URLs. You MUST use the exact URLs provided in the sources above. If no valid sources support the claim, return empty sources array.
+1. truth_percentage: Percentage assessment (e.g., "85% true, 15% false" OR "85% đúng, 15% sai" in ${languageInstruction})
+2. verdict: Choose one and translate to ${languageInstruction}:
+   - "Likely True" / "Có thể đúng"
+   - "Partially True" / "Một phần đúng"  
+   - "False" / "Sai"
+   - "Unverified" / "Chưa xác minh"
+   - "Misleading" / "Gây hiểu lầm"
+   - "Insufficient Information" / "Thiếu thông tin"
 
-Example format (adapt language based on query):
-{
-  "truth_percentage": "85% true, 15% false",
-  "verdict": "Likely True",
-  "summary": "The claim about [specific fact] appears largely accurate based on multiple sources. Recent reports from [source] confirm [detail], while [source] provides additional context about [aspect]. However, some details may be exaggerated.",
+3. summary: Write a DETAILED 4-6 sentence analysis in ${languageInstruction} that includes:
+   - What the claim states specifically
+   - What evidence supports or contradicts it
+   - What credible sources report
+   - Any important context or nuance
+   - Why certain aspects can't be verified (if applicable)
+   - Overall assessment with reasoning
+
+4. highlights: Array of 4-6 specific key points in ${languageInstruction}, including:
+   - Specific facts from credible sources
+   - What can be confirmed vs. what cannot
+   - Important context or caveats
+   - Date/timeline information if relevant
+
+5. sources: Array of objects with title and url from the sources above
+   - ONLY use exact URLs provided above
+   - Include sources that are relevant to the query
+   - Empty array [] if no sources found or none are relevant
+
+Example Response Format (in ${languageInstruction}):
+${queryLanguage === 'vi' ? `{
+  "truth_percentage": "75% đúng, 25% chưa xác minh",
+  "verdict": "Một phần đúng",
+  "summary": "Thông tin về [chủ đề cụ thể] được xác nhận một phần qua nhiều nguồn tin uy tín. Theo báo cáo từ [nguồn], [chi tiết cụ thể] là chính xác và được xác nhận vào [thời gian]. Tuy nhiên, một số chi tiết như [khía cạnh] vẫn chưa có đủ bằng chứng để xác minh hoàn toàn. Các nguồn tin quốc tế như [nguồn] cũng đưa tin tương tự nhưng với một số khác biệt nhỏ về [chi tiết]. Nhìn chung, phần lớn thông tin là đáng tin cậy nhưng cần thận trọng với các chi tiết chưa được xác nhận.",
   "highlights": [
-    "Multiple credible sources confirm the core facts",
-    "Recent developments support the timeline mentioned",
-    "Some secondary details remain unverified"
+    "Nguồn [tên nguồn] xác nhận [sự kiện cụ thể] vào ngày [ngày tháng]",
+    "Nhiều báo uy tín đồng thuận về [khía cạnh chính]",
+    "Chi tiết về [phần cụ thể] chưa được xác minh đầy đủ",
+    "Bối cảnh quan trọng: [thông tin bối cảnh]",
+    "Cần thêm nguồn tin để xác nhận [khía cạnh còn thiếu]"
   ],
-  "sources": [
-    {"title": "Breaking: Major Event Confirmed", "url": "https://realsource.com/article123"},
-    {"title": "Official Statement Released", "url": "https://officialsource.com/press-release"}
-  ]
-}
+  "sources": [...]
+}` : `{
+  "truth_percentage": "75% true, 25% unverified",
+  "verdict": "Partially True",
+  "summary": "The claim regarding [specific subject] has been partially confirmed through multiple credible sources. According to reports from [source], [specific detail] is accurate and was confirmed on [date]. However, certain details such as [aspect] lack sufficient evidence for complete verification. International sources like [source] also report similar information but with minor differences regarding [detail]. Overall, most of the information appears reliable, but caution is warranted for unconfirmed specifics. The context suggests [important contextual information].",
+  "highlights": [
+    "Source [source name] confirmed [specific event] on [date]",
+    "Multiple reputable outlets agree on [main aspect]",
+    "Details about [specific part] remain unverified",
+    "Important context: [contextual information]",
+    "Additional sources needed to confirm [missing aspect]",
+    "Timeline matches [verification point]"
+  ],
+  "sources": [...]
+}`}
 
-Return only valid JSON, no markdown or code blocks.`;
+IMPORTANT RULES:
+- Write ALL text in ${languageInstruction} only
+- Be specific with facts, dates, and source names
+- Explain WHY something cannot be verified if that's the case
+- Make summary 4-6 sentences minimum for thorough analysis
+- Do not fabricate information or URLs
+- Return ONLY valid JSON, no markdown blocks
+
+Generate the response now:`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.3
+      temperature: 0.3,
+      max_tokens: 1500
     });
 
     const response = completion.choices[0].message.content;
     return JSON.parse(response);
   } catch (error) {
     console.error("AI Generation Error:", error);
+    const lang = detectLanguage(query);
+
     // Check if it's a balance issue
     if (error.status === 402 || error.message.includes('Insufficient Balance')) {
       console.warn("API balance insufficient, using enhanced fallback response");
-      return {
+      return lang === 'vi' ? {
+        truth_percentage: "50% đúng, 50% sai",
+        verdict: "Chưa xác minh - Vấn đề API",
+        summary: "Không thể xác minh thông tin này do hạn chế của API. Vui lòng kiểm tra nhiều nguồn tin khác nhau một cách thủ công để xác nhận thông tin.",
+        highlights: ["API hết hạn mức", "Khuyến nghị xác minh thủ công"],
+        sources: newsData.flatMap(s => s.articles).slice(0, 5)
+      } : {
         truth_percentage: "50% true, 50% false",
         verdict: "Unverified - API Balance Issue",
-        summary: "Unable to verify this information due to API limitations. Please check multiple sources manually.",
+        summary: "Unable to verify this information due to API limitations. Please check multiple sources manually to confirm the information.",
         highlights: ["API balance exhausted", "Manual verification recommended"],
-        sources: newsData.flatMap(s => s.articles).slice(0, 5) // Limit sources in fallback
+        sources: newsData.flatMap(s => s.articles).slice(0, 5)
       };
     }
+
     // General fallback
-    return {
+    return lang === 'vi' ? {
+      truth_percentage: "50% đúng, 50% sai",
+      verdict: "Chưa xác minh",
+      summary: "Không thể xác minh thông tin này tại thời điểm hiện tại. Hệ thống không tìm thấy đủ nguồn tin đáng tin cậy để đưa ra đánh giá chính xác.",
+      highlights: ["Vui lòng kiểm tra nhiều nguồn tin khác nhau"],
+      sources: newsData.flatMap(s => s.articles).slice(0, 5)
+    } : {
       truth_percentage: "50% true, 50% false",
       verdict: "Unverified",
-      summary: "Unable to verify this information at this time.",
-      highlights: ["Please check multiple sources"],
+      summary: "Unable to verify this information at this time. The system could not find sufficient credible sources to provide an accurate assessment.",
+      highlights: ["Please check multiple sources for verification"],
       sources: newsData.flatMap(s => s.articles).slice(0, 5)
     };
   }

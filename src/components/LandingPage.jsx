@@ -10,6 +10,18 @@ export default function LandingPage({ onEnter }) {
     "Giá xăng tăng mạnh hôm nay",
     "Sự kiện thời sự nóng: cuộc họp khẩn",
     "Tin lan truyền: Công ty A phá sản?",
+    "Thời tiết miền Bắc chuyển lạnh đột ngột",
+    "Giải bóng đá V-League 2025 bắt đầu",
+    "Phát hiện mới về di sản văn hóa tại Hội An",
+    "Tin tức giáo dục: Thay đổi chương trình học THPT",
+    "Tình hình chiến sự tại Ukraine vẫn căng thẳng",
+    "Cuộc bầu cử tổng thống Mỹ 2024 đang nóng lên",
+    "Biến đổi khí hậu: Hội nghị COP28 sắp diễn ra",
+    "Tin tức công nghệ: Apple ra mắt sản phẩm mới",
+    "Khủng hoảng năng lượng châu Âu: Các nước tìm giải pháp",
+    "Thảm họa thiên nhiên tại Indonesia: Cứu hộ khẩn cấp",
+    "Thị trường chứng khoán toàn cầu biến động mạnh",
+    "Tin tức thể thao: Giải vô địch bóng đá nữ thế giới 2025",
   ];
 
   function submit() {
@@ -38,7 +50,10 @@ export default function LandingPage({ onEnter }) {
           <div className="auth-buttons">
             <motion.button
               className="auth-btn signin-btn"
-              whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.1)" }}
+              whileHover={{
+                scale: 1.05,
+                backgroundColor: "rgba(255,255,255,0.1)",
+              }}
               whileTap={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400 }}
             >
@@ -62,38 +77,38 @@ export default function LandingPage({ onEnter }) {
           className="floating-circle circle-1"
           animate={{
             y: [0, -20, 0],
-            rotate: [0, 180, 360]
+            rotate: [0, 180, 360],
           }}
           transition={{
             duration: 6,
             repeat: Infinity,
-            ease: "easeInOut"
+            ease: "easeInOut",
           }}
         />
         <motion.div
           className="floating-circle circle-2"
           animate={{
             y: [0, 15, 0],
-            x: [0, -10, 0]
+            x: [0, -10, 0],
           }}
           transition={{
             duration: 8,
             repeat: Infinity,
             ease: "easeInOut",
-            delay: 1
+            delay: 1,
           }}
         />
         <motion.div
           className="floating-circle circle-3"
           animate={{
             y: [0, -25, 0],
-            rotate: [0, -180, -360]
+            rotate: [0, -180, -360],
           }}
           transition={{
             duration: 7,
             repeat: Infinity,
             ease: "easeInOut",
-            delay: 2
+            delay: 2,
           }}
         />
       </div>
@@ -121,7 +136,9 @@ export default function LandingPage({ onEnter }) {
             transition={{ duration: 0.6, delay: 0.6 }}
           >
             <TypingAnimation lines={trending} speed={45} pause={1700} />
-            <div className="typing-sub">Tin tức thịnh hành tự động — cập nhật liên tục</div>
+            <div className="typing-sub">
+              Tin tức thịnh hành tự động — cập nhật liên tục
+            </div>
           </motion.div>
 
           <motion.div
@@ -135,12 +152,17 @@ export default function LandingPage({ onEnter }) {
               onChange={(e) => setValue(e.target.value)}
               placeholder="Nhập tiêu đề, nội dung hoặc dán link... (vd: Ngân 98 bị bắt)"
               className="landing-input"
-              onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") submit();
+              }}
             />
             <motion.button
               className="landing-btn"
               onClick={submit}
-              whileHover={{ scale: 1.05, boxShadow: "0 8px 25px rgba(37,99,235,0.3)" }}
+              whileHover={{
+                scale: 1.05,
+                boxShadow: "0 8px 25px rgba(37,99,235,0.3)",
+              }}
               whileTap={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400 }}
             >
@@ -173,7 +195,8 @@ export default function LandingPage({ onEnter }) {
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.5, delay: 1.0 }}
             >
-              Xác minh tin tức và kiểm chứng sự thật với phân tích AI từ nhiều nguồn đáng tin cậy.
+              Xác minh tin tức và kiểm chứng sự thật với phân tích AI từ nhiều
+              nguồn đáng tin cậy.
             </motion.p>
             <motion.div
               className="feature-list"
@@ -183,28 +206,40 @@ export default function LandingPage({ onEnter }) {
             >
               <motion.div
                 className="feature-item"
-                whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.2)" }}
+                whileHover={{
+                  scale: 1.05,
+                  backgroundColor: "rgba(255,255,255,0.2)",
+                }}
                 transition={{ type: "spring", stiffness: 300 }}
               >
                 🔍 Xác minh đa nguồn
               </motion.div>
               <motion.div
                 className="feature-item"
-                whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.2)" }}
+                whileHover={{
+                  scale: 1.05,
+                  backgroundColor: "rgba(255,255,255,0.2)",
+                }}
                 transition={{ type: "spring", stiffness: 300 }}
               >
                 🤖 Phân tích AI thông minh
               </motion.div>
               <motion.div
                 className="feature-item"
-                whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.2)" }}
+                whileHover={{
+                  scale: 1.05,
+                  backgroundColor: "rgba(255,255,255,0.2)",
+                }}
                 transition={{ type: "spring", stiffness: 300 }}
               >
                 📊 Đánh giá độ tin cậy
               </motion.div>
               <motion.div
                 className="feature-item"
-                whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.2)" }}
+                whileHover={{
+                  scale: 1.05,
+                  backgroundColor: "rgba(255,255,255,0.2)",
+                }}
                 transition={{ type: "spring", stiffness: 300 }}
               >
                 🌐 Kiểm chứng thời gian thực
