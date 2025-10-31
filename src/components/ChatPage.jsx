@@ -61,7 +61,7 @@ export default function ChatPage({ initialPrompt = "", onBack }) {
     console.log("Sending query to backend:", text);
 
     try {
-      const response = await fetch("http://localhost:3001/api/check", {
+      const response = await fetch("/api/check", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -84,14 +84,15 @@ export default function ChatPage({ initialPrompt = "", onBack }) {
       setMessages((m) => [...m, ai]);
     } catch (error) {
       console.error("Error calling backend:", error);
+      console.error("Error details:", error.message, error.stack);
       const errorMsg = {
         id: Date.now() + Math.random(),
         who: "ai",
         data: {
           reliability: 0,
           verdict: "Error",
-          summary: "Unable to verify this information. Please check your backend connection.",
-          highlights: ["Backend error"],
+          summary: `Unable to verify this information. ${error.message || 'Please check your backend connection.'}`,
+          highlights: ["Backend error: " + (error.message || "Unknown error")],
           sources: [],
         },
       };

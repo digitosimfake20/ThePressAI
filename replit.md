@@ -7,7 +7,8 @@ PressAI is an AI-powered news verification application that helps users fact-che
 - Configured for Replit environment
 - Updated frontend to run on port 5000 with 0.0.0.0 binding
 - Updated backend to run on port 3001 in development (localhost), port 5000 in production (0.0.0.0)
-- Changed API calls from Netlify functions to local backend API (http://localhost:3001/api/check)
+- Changed API calls from Netlify functions to local backend API (`/api/check` via proxy)
+- Added proxy configuration in package.json to route `/api/*` calls to backend
 - Added OPENAI_API_KEY environment variable configuration
 - Installed all dependencies (npm install)
 - Set up concurrently to run both frontend and backend together
@@ -81,7 +82,17 @@ This starts:
 ## User Preferences
 - No specific preferences documented yet
 
+## Setup Status
+✅ **Application is fully functional and tested**
+- Frontend and backend running successfully
+- News scraping verified (VnExpress, Tuoi Tre working)
+- OpenAI integration tested and responding in Vietnamese
+- Proxy configuration working correctly
+- Deployment configuration ready for production
+
 ## Notes
 - The chat history sidebar is currently non-functional (marked as "HIỆN TẠI CHƯA HOẠT ĐỘNG ĐƯỢC")
 - The application uses web scraping which may be affected by website structure changes
+- Some international sources (Reuters, CNN) may return 401 errors due to anti-scraping measures
 - OpenAI API usage may incur costs based on query volume
+- React proxy configuration routes `/api/*` requests to `http://localhost:3001` during development
