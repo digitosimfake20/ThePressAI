@@ -61,7 +61,7 @@ export default function ChatPage({ initialPrompt = "", onBack }) {
     console.log("Sending query to backend:", text);
 
     try {
-      const response = await fetch("/.netlify/functions/api", {
+      const response = await fetch("http://localhost:3001/api/check", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
