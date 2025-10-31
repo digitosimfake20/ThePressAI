@@ -405,63 +405,33 @@ function formatResponse(aiResponse, newsData) {
   };
 }
 
-export async function handler(event, context) {
-  // Set CORS headers
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  };
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 
-  // Handle preflight OPTIONS request
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: '',
-    };
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
 
-  // Only allow POST requests
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: 'Method not allowed' }),
-    };
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { query } = JSON.parse(event.body);
+    const { query } = req.body;
 
     if (!query) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: 'Query is required' }),
-      };
+      return res.status(400).json({ error: 'Query is required' });
     }
 
-    // Scrape news from multiple sources
     const newsData = await scrapeNews(query);
-
-    // Generate AI response
     const aiResponse = await generateResponse(query, newsData);
-
-    // Format the final response
     const formatted = formatResponse(aiResponse, newsData);
 
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify(formatted),
-    };
+    return res.status(200).json(formatted);
   } catch (error) {
-    console.error('Error in Netlify function:', error);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: 'Internal server error' }),
-    };
+    console.error('Error in Vercel function:', error);
+    return res.status(500).json({ error: 'Internal server error', message: error.message });
   }
 }
