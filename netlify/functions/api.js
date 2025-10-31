@@ -1,16 +1,16 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
+import OpenAI from "openai";
 
-// Xem haha
-function Vietnam(query) {
-  // check linh tih ti
+// Function to detect if query is Vietnamese
+function isVietnameseQuery(query) {
+  // Vietnamese characters and common Vietnamese words
   const vietnamesePattern = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ]/;
   const vietnameseWords = ['việt nam', 'hà nội', 'sài gòn', 'đà nẵng', 'cần thơ', 'việt', 'nam', 'tphcm', 'bình dương', 'đồng nai', 'nghệ an', 'hải phòng'];
 
   const lowerQuery = query.toLowerCase();
   return vietnamesePattern.test(query) || vietnameseWords.some(word => lowerQuery.includes(word));
 }
-
 
 const userAgents = [
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -26,10 +26,10 @@ function randomUserAgent() {
   return userAgents[Math.floor(Math.random() * userAgents.length)];
 }
 
-export async function scrapeNews(query) {
-  const isVietnamese = Vietnam(query);
+async function scrapeNews(query) {
+  const isVietnamese = isVietnameseQuery(query);
 
-  // riêng
+  // Prioritize Vietnamese sources for Vietnamese queries, international for others
   const vietnameseSources = [
     {
       name: "VnExpress",
@@ -66,7 +66,7 @@ export async function scrapeNews(query) {
     }
   ];
 
-  const quocte = [
+  const internationalSources = [
     {
       name: "BBC",
       url: `https://www.bbc.com/search?q=${encodeURIComponent(query)}`,
@@ -227,10 +227,10 @@ export async function scrapeNews(query) {
     },
   ];
 
-  // rieng
+  // Choose sources based on query language
   const sources = isVietnamese ?
-    [...vietnameseSources, ...quocte.slice(0, 2)] : //1 VN, 2 IN
-    [...quocte.slice(0, 5), ...vietnameseSources.slice(0, 1)];   // 5 In, 1 VN
+    [...vietnameseSources, ...internationalSources.slice(0, 2)] : // Vietnamese + 2 international
+    [...internationalSources.slice(0, 5), ...vietnameseSources.slice(0, 1)];   // 5 international + 1 Vietnamese
 
   const results = [];
 
@@ -239,7 +239,7 @@ export async function scrapeNews(query) {
     let success = false;
     while (retries > 0 && !success) {
       try {
-        // fake la con nguoi :))
+        // Add random delay to avoid rate limiting (1-3 seconds)
         const delay = Math.floor(Math.random() * 2000) + 1000;
         await new Promise(resolve => setTimeout(resolve, delay));
 
@@ -280,17 +280,17 @@ export async function scrapeNews(query) {
           if (articles.length > 0) break; // nếu tìm thấy bài thì dừng selector tiếp theo
         }
 
-        console.log(`NGON duoc ${source.name}: ${articles.length} bao`);
+        console.log(`Successfully scraped ${source.name}: ${articles.length} articles`);
         results.push({ source: source.name, articles });
         success = true;
       } catch (error) {
         retries--;
         if (retries === 0) {
-          console.error(`${source.name} that bai sau 3 lan thu: ${error.message}`);
+          console.error(`${source.name} failed after 3 attempts: ${error.message}`);
           results.push({ source: source.name, articles: [] });
         } else {
-          console.warn(`thulai ${source.name}, solan thu: ${retries}`);
-          // nhu kieu anti bot
+          console.warn(`Retry ${source.name}, attempts left: ${retries}`);
+          // Exponential backoff: 1s, 2s, 4s
           const backoffDelay = Math.pow(2, 3 - retries) * 1000;
           await new Promise((r) => setTimeout(r, backoffDelay));
         }
@@ -299,4 +299,189 @@ export async function scrapeNews(query) {
   }
 
   return results.filter((r) => r.articles.length > 0);
+}
+
+async function generateResponse(query, newsData) {
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+  });
+
+  try {
+    // Limit to 3-5 articles total for faster processing
+    const limitedNewsData = newsData.flatMap(source => source.articles).slice(0, 5);
+
+    const sourcesText = newsData.map(source =>
+      `${source.source}:\n${source.articles.slice(0, 1).map(a => `- ${a.title}\n  URL: ${a.url}`).join('\n')}`
+    ).join('\n\n');
+
+    const prompt = `
+You are PressAI, a news verification assistant. Analyze the following news query and provide a detailed fact-check response.
+
+CRITICAL LANGUAGE INSTRUCTION: First, detect the language of the user's query ("${query}"). Then, provide the ENTIRE response (truth_percentage, verdict, summary, highlights, sources) in that EXACT SAME LANGUAGE. Do not use English if the query is in Vietnamese. Do not use Vietnamese if the query is in English. Respond in the detected language for all text fields.
+
+Query: "${query}"
+
+Available news sources:
+${sourcesText}
+
+Please provide a comprehensive JSON response with these exact keys: truth_percentage, verdict, summary, highlights (array), sources (array of objects with title and url)
+
+Requirements:
+- truth_percentage: Assessment as percentages (e.g., "85% true, 15% false" or "85% đúng, 15% sai" depending on language)
+- verdict: One of "Likely True", "False", "Unverified", "Partially True" (translate to detected language)
+- summary: Detailed 2-3 sentence explanation of findings with specific facts (in detected language)
+- highlights: Array of 3-5 key points from the analysis (in detected language)
+- sources: Array of objects with title and url - ONLY include sources that directly support the verdict (empty array if no supporting sources)
+
+IMPORTANT: Only include URLs that are valid, working, and directly related to the query. Do not fabricate, modify, or use placeholder URLs. You MUST use the exact URLs provided in the sources above. If no valid sources support the claim, return empty sources array.
+
+Example format (adapt language based on query):
+{
+  "truth_percentage": "85% true, 15% false",
+  "verdict": "Likely True",
+  "summary": "The claim about [specific fact] appears largely accurate based on multiple sources. Recent reports from [source] confirm [detail], while [source] provides additional context about [aspect]. However, some details may be exaggerated.",
+  "highlights": [
+    "Multiple credible sources confirm the core facts",
+    "Recent developments support the timeline mentioned",
+    "Some secondary details remain unverified"
+  ],
+  "sources": [
+    {"title": "Breaking: Major Event Confirmed", "url": "https://realsource.com/article123"},
+    {"title": "Official Statement Released", "url": "https://officialsource.com/press-release"}
+  ]
+}
+
+Return only valid JSON, no markdown or code blocks.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3
+    });
+
+    const response = completion.choices[0].message.content;
+    return JSON.parse(response);
+  } catch (error) {
+    console.error("AI Generation Error:", error);
+    // Check if it's a balance issue
+    if (error.status === 402 || error.message.includes('Insufficient Balance')) {
+      console.warn("API balance insufficient, using enhanced fallback response");
+      return {
+        truth_percentage: "50% true, 50% false",
+        verdict: "Unverified - API Balance Issue",
+        summary: "Unable to verify this information due to API limitations. Please check multiple sources manually.",
+        highlights: ["API balance exhausted", "Manual verification recommended"],
+        sources: newsData.flatMap(s => s.articles).slice(0, 5) // Limit sources in fallback
+      };
+    }
+    // General fallback
+    return {
+      truth_percentage: "50% true, 50% false",
+      verdict: "Unverified",
+      summary: "Unable to verify this information at this time.",
+      highlights: ["Please check multiple sources"],
+      sources: newsData.flatMap(s => s.articles).slice(0, 5)
+    };
+  }
+}
+
+function formatResponse(aiResponse, newsData) {
+  // Calculate reliability percentage from truth_percentage
+  let reliability = 50; // default
+  if (aiResponse.truth_percentage) {
+    const match = aiResponse.truth_percentage.match(/(\d+)%/);
+    if (match) {
+      reliability = parseInt(match[1]);
+    }
+  }
+
+  return {
+    truth_percentage: aiResponse.truth_percentage || "50% true, 50% false",
+    verdict: aiResponse.verdict || "Unverified",
+    summary: aiResponse.summary || "Unable to analyze this query.",
+    highlights: aiResponse.highlights || [],
+    sources: aiResponse.sources || newsData.flatMap(s => s.articles).slice(0, 5),
+    reliability: reliability
+  };
+}
+
+export async function handler(event, context) {
+  // Set CORS headers
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  };
+
+  // Handle preflight OPTIONS request
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: '',
+    };
+  }
+
+  // Only allow POST requests
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ error: 'Method not allowed' }),
+    };
+  }
+
+  try {
+    const { query } = JSON.parse(event.body);
+
+    if (!query) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Query is required' }),
+      };
+    }
+
+    // Set a timeout for the entire operation (25 seconds to stay under Netlify's 30s limit)
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Function timeout')), 25000);
+    });
+
+    // Scrape news from multiple sources with timeout
+    const scrapePromise = scrapeNews(query);
+    const newsData = await Promise.race([scrapePromise, timeoutPromise]);
+
+    // Generate AI response with timeout
+    const aiPromise = generateResponse(query, newsData);
+    const aiResponse = await Promise.race([aiPromise, timeoutPromise]);
+
+    // Format the final response
+    const formatted = formatResponse(aiResponse, newsData);
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify(formatted),
+    };
+  } catch (error) {
+    console.error('Error in Netlify function:', error);
+
+    // Handle timeout specifically
+    if (error.message === 'Function timeout') {
+      return {
+        statusCode: 408,
+        headers,
+        body: JSON.stringify({
+          error: 'Request timeout',
+          message: 'The request took too long to process. Please try again.'
+        }),
+      };
+    }
+
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Internal server error' }),
+    };
+  }
 }
