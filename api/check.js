@@ -5,11 +5,28 @@ import OpenAI from "openai";
 // Function to detect if query is Vietnamese
 function isVietnameseQuery(query) {
   // Vietnamese characters and common Vietnamese words
-  const vietnamesePattern = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ]/;
-  const vietnameseWords = ['việt nam', 'hà nội', 'sài gòn', 'đà nẵng', 'cần thơ', 'việt', 'nam', 'tphcm', 'bình dương', 'đồng nai', 'nghệ an', 'hải phòng'];
+  const vietnamesePattern =
+    /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ]/;
+  const vietnameseWords = [
+    "việt nam",
+    "hà nội",
+    "sài gòn",
+    "đà nẵng",
+    "cần thơ",
+    "việt",
+    "nam",
+    "tphcm",
+    "bình dương",
+    "đồng nai",
+    "nghệ an",
+    "hải phòng",
+  ];
 
   const lowerQuery = query.toLowerCase();
-  return vietnamesePattern.test(query) || vietnameseWords.some(word => lowerQuery.includes(word));
+  return (
+    vietnamesePattern.test(query) ||
+    vietnameseWords.some((word) => lowerQuery.includes(word))
+  );
 }
 
 const userAgents = [
@@ -34,36 +51,48 @@ async function scrapeNews(query) {
     {
       name: "VnExpress",
       url: `https://timkiem.vnexpress.net/?q=${encodeURIComponent(query)}`,
-      selectors: [".title-news a", ".item-news a[href*='/']", "h3.title-news a"],
+      selectors: [
+        ".title-news a",
+        ".item-news a[href*='/']",
+        "h3.title-news a",
+      ],
       baseUrl: "https://vnexpress.net",
       urlProcessor: (href) => {
-        if (href.startsWith('http')) return href;
-        if (href.startsWith('/')) return `https://vnexpress.net${href}`;
+        if (href.startsWith("http")) return href;
+        if (href.startsWith("/")) return `https://vnexpress.net${href}`;
         return `https://vnexpress.net/${href}`;
-      }
+      },
     },
     {
       name: "Tuoi Tre",
       url: `https://tuoitre.vn/tim-kiem.htm?keywords=${encodeURIComponent(query)}`,
-      selectors: [".news-item a[href*='.htm']", "h3 a[href*='.htm']", ".title a[href*='.htm']"],
+      selectors: [
+        ".news-item a[href*='.htm']",
+        "h3 a[href*='.htm']",
+        ".title a[href*='.htm']",
+      ],
       baseUrl: "https://tuoitre.vn",
       urlProcessor: (href) => {
-        if (href.startsWith('http')) return href;
-        if (href.startsWith('/')) return `https://tuoitre.vn${href}`;
+        if (href.startsWith("http")) return href;
+        if (href.startsWith("/")) return `https://tuoitre.vn${href}`;
         return `https://tuoitre.vn/${href}`;
-      }
+      },
     },
     {
       name: "Thanh Nien",
       url: `https://thanhnien.vn/tim-kiem.html?q=${encodeURIComponent(query)}`,
-      selectors: [".story__title a", ".box-title a[href*='.html']", "h2 a[href*='.html']"],
+      selectors: [
+        ".story__title a",
+        ".box-title a[href*='.html']",
+        "h2 a[href*='.html']",
+      ],
       baseUrl: "https://thanhnien.vn",
       urlProcessor: (href) => {
-        if (href.startsWith('http')) return href;
-        if (href.startsWith('/')) return `https://thanhnien.vn${href}`;
+        if (href.startsWith("http")) return href;
+        if (href.startsWith("/")) return `https://thanhnien.vn${href}`;
         return `https://thanhnien.vn/${href}`;
-      }
-    }
+      },
+    },
   ];
 
   const internationalSources = [
@@ -76,7 +105,7 @@ async function scrapeNews(query) {
         ".ssrcss-1mhwnz8-PromoLink span a",
         "a[href*='/news/articles/']",
         "a[href*='/news/'] h2",
-        "a[href*='/news/'] span"
+        "a[href*='/news/'] span",
       ],
       baseUrl: "https://www.bbc.com",
     },
@@ -88,7 +117,7 @@ async function scrapeNews(query) {
         "a[href*='/world/']",
         "a[href*='/business/']",
         "a[href*='/article/']",
-        ".story-content a"
+        ".story-content a",
       ],
       baseUrl: "https://www.reuters.com",
     },
@@ -99,7 +128,7 @@ async function scrapeNews(query) {
         ".container__headline a",
         ".container__link a",
         "h3 a[href*='/202']",
-        ".card--anchor a"
+        ".card--anchor a",
       ],
       baseUrl: "https://edition.cnn.com",
     },
@@ -110,7 +139,7 @@ async function scrapeNews(query) {
         ".CardHeadline a",
         ".headline a",
         "a[href*='/article/']",
-        ".Component-headline-0-2-82 a"
+        ".Component-headline-0-2-82 a",
       ],
       baseUrl: "https://apnews.com",
     },
@@ -121,7 +150,7 @@ async function scrapeNews(query) {
         ".fc-item__title a",
         ".fc-item__link",
         "a[href*='/202']",
-        ".u-faux-block-link__overlay"
+        ".u-faux-block-link__overlay",
       ],
       baseUrl: "https://www.theguardian.com",
     },
@@ -132,7 +161,7 @@ async function scrapeNews(query) {
         ".gc__title a",
         ".gc__excerpt a",
         "a[href*='/news/']",
-        ".fte__link"
+        ".fte__link",
       ],
       baseUrl: "https://www.aljazeera.com",
     },
@@ -144,7 +173,7 @@ async function scrapeNews(query) {
         ".css-1l4spti a",
         "a[href*='/202'] h4",
         ".story-link",
-        "a[data-testid='search-result-link']"
+        "a[data-testid='search-result-link']",
       ],
       baseUrl: "https://www.nytimes.com",
     },
@@ -155,7 +184,7 @@ async function scrapeNews(query) {
         ".story-headline a",
         ".headline a[href*='/202']",
         "a[data-pb-local-content-field='web_headline']",
-        ".font--headline a"
+        ".font--headline a",
       ],
       baseUrl: "https://www.washingtonpost.com",
     },
@@ -166,7 +195,7 @@ async function scrapeNews(query) {
         "h3 a[href*='/articles/']",
         ".headline a",
         "a[href*='/articles/']",
-        ".WSJTheme--headline--unZqjb45 a"
+        ".WSJTheme--headline--unZqjb45 a",
       ],
       baseUrl: "https://www.wsj.com",
     },
@@ -177,7 +206,7 @@ async function scrapeNews(query) {
         ".title a",
         ".headline a[href*='/202']",
         "a[href*='/202']",
-        ".article-title a"
+        ".article-title a",
       ],
       baseUrl: "https://www.foxnews.com",
     },
@@ -188,7 +217,7 @@ async function scrapeNews(query) {
         ".tease-card__headline a",
         ".story-card__title a",
         "a[href*='/202'] h2",
-        ".headline a"
+        ".headline a",
       ],
       baseUrl: "https://www.nbcnews.com",
     },
@@ -199,7 +228,7 @@ async function scrapeNews(query) {
         ".headlines-li a",
         ".headline a[href*='/202']",
         "a[href*='/story/']",
-        ".DataListStories h2 a"
+        ".DataListStories h2 a",
       ],
       baseUrl: "https://abcnews.go.com",
     },
@@ -210,7 +239,7 @@ async function scrapeNews(query) {
         ".item__hed a",
         ".title a[href*='/news/']",
         "a[href*='/news/'] h4",
-        ".search-result a"
+        ".search-result a",
       ],
       baseUrl: "https://www.cbsnews.com",
     },
@@ -221,98 +250,104 @@ async function scrapeNews(query) {
         ".title a",
         ".teaser__text a",
         "a[href*='/202'] h3",
-        ".item-info a"
+        ".item-info a",
       ],
       baseUrl: "https://www.npr.org",
     },
   ];
 
-  // Choose sources based on query language
-  const sources = isVietnamese ?
-    [...vietnameseSources, ...internationalSources.slice(0, 2)] : // Vietnamese + 2 international
-    [...internationalSources.slice(0, 5), ...vietnameseSources.slice(0, 1)];   // 5 international + 1 Vietnamese
+  // Choose sources based on query language - REDUCED for faster response
+  const sources = isVietnamese
+    ? [...vietnameseSources.slice(0, 2), ...internationalSources.slice(0, 1)] // 2 Vietnamese + 1 international = 3 sources
+    : [...internationalSources.slice(0, 2), ...vietnameseSources.slice(0, 1)]; // 2 international + 1 Vietnamese = 3 sources
 
-  const results = [];
+  // Scrape sources in PARALLEL with timeout protection
+  const scrapePromises = sources.map(async (source) => {
+    try {
+      const response = await axios.get(source.url, {
+        headers: {
+          "User-Agent": randomUserAgent(),
+          Accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+          "Accept-Encoding": "gzip, deflate, br",
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+          "Upgrade-Insecure-Requests": "1",
+          "Sec-Fetch-Dest": "document",
+          "Sec-Fetch-Mode": "navigate",
+          "Sec-Fetch-Site": "none",
+          "Sec-Fetch-User": "?1",
+          Referer: "https://www.google.com/",
+        },
+        timeout: 5000, // Reduced to 5 seconds
+        maxRedirects: 3,
+      });
 
-  for (const source of sources) {
-    let retries = 3;
-    let success = false;
-    while (retries > 0 && !success) {
-      try {
-        // Add random delay to avoid rate limiting (1-3 seconds)
-        const delay = Math.floor(Math.random() * 2000) + 1000;
-        await new Promise(resolve => setTimeout(resolve, delay));
+      const $ = cheerio.load(response.data);
+      const articles = [];
 
-        const response = await axios.get(source.url, {
-          headers: {
-            "User-Agent": randomUserAgent(),
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Cache-Control": "no-cache",
-            "Pragma": "no-cache",
-            "Upgrade-Insecure-Requests": "1",
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "none",
-            "Sec-Fetch-User": "?1",
-            "Referer": "https://www.google.com/",
-          },
-          timeout: 15000,
-          maxRedirects: 5,
+      for (const sel of source.selectors) {
+        $(sel).each((i, el) => {
+          if (articles.length >= 3) return false;
+          const link = $(el).closest("a").attr("href") || $(el).attr("href");
+          const title = $(el).text().trim();
+          if (title && link) {
+            let fullUrl = link.startsWith("http")
+              ? link
+              : `${source.baseUrl}${link}`;
+            articles.push({ title, url: fullUrl });
+          }
         });
-
-        const $ = cheerio.load(response.data);
-        const articles = [];
-
-        for (const sel of source.selectors) {
-          $(sel).each((i, el) => {
-            if (articles.length >= 3) return false;
-            const link = $(el).closest("a").attr("href") || $(el).attr("href");
-            const title = $(el).text().trim();
-            if (title && link) {
-              let fullUrl = link.startsWith("http")
-                ? link
-                : `${source.baseUrl}${link}`;
-              articles.push({ title, url: fullUrl });
-            }
-          });
-          if (articles.length > 0) break; // nếu tìm thấy bài thì dừng selector tiếp theo
-        }
-
-        console.log(`Successfully scraped ${source.name}: ${articles.length} articles`);
-        results.push({ source: source.name, articles });
-        success = true;
-      } catch (error) {
-        retries--;
-        if (retries === 0) {
-          console.error(`${source.name} failed after 3 attempts: ${error.message}`);
-          results.push({ source: source.name, articles: [] });
-        } else {
-          console.warn(`Retry ${source.name}, attempts left: ${retries}`);
-          // Exponential backoff: 1s, 2s, 4s
-          const backoffDelay = Math.pow(2, 3 - retries) * 1000;
-          await new Promise((r) => setTimeout(r, backoffDelay));
-        }
+        if (articles.length > 0) break;
       }
-    }
-  }
 
-  return results.filter((r) => r.articles.length > 0);
+      console.log(
+        `Successfully scraped ${source.name}: ${articles.length} articles`,
+      );
+      return { source: source.name, articles };
+    } catch (error) {
+      console.error(`${source.name} failed: ${error.message}`);
+      return { source: source.name, articles: [] };
+    }
+  });
+
+  // Wait for all scraping with a 15-second overall timeout
+  const results = await Promise.race([
+    Promise.all(scrapePromises),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Scraping timeout")), 15000),
+    ),
+  ]).catch((error) => {
+    console.error("Scraping error:", error.message);
+    return [];
+  });
+
+  return Array.isArray(results)
+    ? results.filter((r) => r.articles.length > 0)
+    : [];
 }
 
 async function generateResponse(query, newsData) {
   const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
+    apiKey: process.env.OPENAI_API_KEY,
   });
 
   try {
     // Limit to 3-5 articles total for faster processing
-    const limitedNewsData = newsData.flatMap(source => source.articles).slice(0, 5);
+    const limitedNewsData = newsData
+      .flatMap((source) => source.articles)
+      .slice(0, 5);
 
-    const sourcesText = newsData.map(source =>
-      `${source.source}:\n${source.articles.slice(0, 1).map(a => `- ${a.title}\n  URL: ${a.url}`).join('\n')}`
-    ).join('\n\n');
+    const sourcesText = newsData
+      .map(
+        (source) =>
+          `${source.source}:\n${source.articles
+            .slice(0, 1)
+            .map((a) => `- ${a.title}\n  URL: ${a.url}`)
+            .join("\n")}`,
+      )
+      .join("\n\n");
 
     const prompt = `
 You are PressAI, a news verification assistant. Analyze the following news query and provide a detailed fact-check response.
@@ -356,7 +391,7 @@ Return only valid JSON, no markdown or code blocks.`;
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.3
+      temperature: 0.3,
     });
 
     const response = completion.choices[0].message.content;
@@ -364,14 +399,23 @@ Return only valid JSON, no markdown or code blocks.`;
   } catch (error) {
     console.error("AI Generation Error:", error);
     // Check if it's a balance issue
-    if (error.status === 402 || error.message.includes('Insufficient Balance')) {
-      console.warn("API balance insufficient, using enhanced fallback response");
+    if (
+      error.status === 402 ||
+      error.message.includes("Insufficient Balance")
+    ) {
+      console.warn(
+        "API balance insufficient, using enhanced fallback response",
+      );
       return {
         truth_percentage: "50% true, 50% false",
         verdict: "Unverified - API Balance Issue",
-        summary: "Unable to verify this information due to API limitations. Please check multiple sources manually.",
-        highlights: ["API balance exhausted", "Manual verification recommended"],
-        sources: newsData.flatMap(s => s.articles).slice(0, 5) // Limit sources in fallback
+        summary:
+          "Unable to verify this information due to API limitations. Please check multiple sources manually.",
+        highlights: [
+          "API balance exhausted",
+          "Manual verification recommended",
+        ],
+        sources: newsData.flatMap((s) => s.articles).slice(0, 5), // Limit sources in fallback
       };
     }
     // General fallback
@@ -380,7 +424,7 @@ Return only valid JSON, no markdown or code blocks.`;
       verdict: "Unverified",
       summary: "Unable to verify this information at this time.",
       highlights: ["Please check multiple sources"],
-      sources: newsData.flatMap(s => s.articles).slice(0, 5)
+      sources: newsData.flatMap((s) => s.articles).slice(0, 5),
     };
   }
 }
@@ -400,29 +444,30 @@ function formatResponse(aiResponse, newsData) {
     verdict: aiResponse.verdict || "Unverified",
     summary: aiResponse.summary || "Unable to analyze this query.",
     highlights: aiResponse.highlights || [],
-    sources: aiResponse.sources || newsData.flatMap(s => s.articles).slice(0, 5),
-    reliability: reliability
+    sources:
+      aiResponse.sources || newsData.flatMap((s) => s.articles).slice(0, 5),
+    reliability: reliability,
   };
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
 
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
     const { query } = req.body;
 
     if (!query) {
-      return res.status(400).json({ error: 'Query is required' });
+      return res.status(400).json({ error: "Query is required" });
     }
 
     const newsData = await scrapeNews(query);
@@ -431,7 +476,9 @@ export default async function handler(req, res) {
 
     return res.status(200).json(formatted);
   } catch (error) {
-    console.error('Error in Vercel function:', error);
-    return res.status(500).json({ error: 'Internal server error', message: error.message });
+    console.error("Error in Vercel function:", error);
+    return res
+      .status(500)
+      .json({ error: "Internal server error", message: error.message });
   }
 }
