@@ -1,0 +1,36 @@
+AI Generation Error: AuthenticationError: 401 You didn't provide an API key. You need to provide your API key in an Authorization header using Bearer auth (i.e. Authorization: Bearer YOUR_KEY), or as the password field (with blank username) if you're accessing the API from your browser and are prompted for a username and password. You can obtain an API key from https://platform.openai.com/account/api-keys.
+[1]     at APIError.generate (file:///home/runner/workspace/backend/node_modules/openai/error.mjs:44:20)
+[1]     at OpenAI.makeStatusError (file:///home/runner/workspace/backend/node_modules/openai/core.mjs:295:25)
+[1]     at OpenAI.makeRequest (file:///home/runner/workspace/backend/node_modules/openai/core.mjs:339:30)
+[1]     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+[1]     at async generateResponse (file:///home/runner/workspace/backend/services/aiGenerator.js:55:24)
+[1]     at async file:///home/runner/workspace/backend/routes/ai.js:19:24 {
+[1]   status: 401,
+[1]   headers: {
+[1]     'alt-svc': 'h3=":443"; ma=86400',
+[1]     'cf-cache-status': 'DYNAMIC',
+[1]     'cf-ray': '997414076a3f418d-BOM',
+[1]     connection: 'keep-alive',
+[1]     'content-length': '496',
+[1]     'content-type': 'application/json; charset=utf-8',
+[1]     date: 'Fri, 31 Oct 2025 15:10:16 GMT',
+[1]     server: 'cloudflare',
+[1]     'set-cookie': '__cf_bm=GJSNZhzYLq0x8.9yuygrZrzlUU.WsPTFS6W4gBo2zZY-1761923416-1.0.1.1-TJPRFpLF.GclGQxajOGkBH8G59U1jc.pzSXODafe.1wkbq892wYzyy0FBUbbbD172jy.vcQnWReLrbWFVbMhNySdwPcLX7QxXPltS9bxbUw; path=/; expires=Fri, 31-Oct-25 15:40:16 GMT; domain=.api.openai.com; HttpOnly; Secure; SameSite=None, _cfuvid=8LOevxtTGapbOFvBJq97KpBZKhmUSGCoIZc.wDe75VA-1761923416566-0.0.1.1-604800000; path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None',
+[1]     'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+[1]     vary: 'Origin',
+[1]     'x-content-type-options': 'nosniff',
+[1]     'x-envoy-upstream-service-time': '0',
+[1]     'x-openai-proxy-wasm': 'v0.1',
+[1]     'x-request-id': 'req_05ac440866144917b58a198b61f6afec'
+[1]   },
+[1]   request_id: 'req_05ac440866144917b58a198b61f6afec',
+[1]   error: {
+[1]     message: "You didn't provide an API key. You need to provide your API key in an Authorization header using Bearer auth (i.e. Authorization: Bearer YOUR_KEY), or as the password field (with blank username) if you're accessing the API from your browser and are prompted for a username and password. You can obtain an API key from https://platform.openai.com/account/api-keys.",
+[1]     type: 'invalid_request_error',
+[1]     param: null,
+[1]     code: null
+[1]   },
+[1]   code: null,
+[1]   param: null,
+[1]   type: 'invalid_request_error'
+[1] }
